@@ -3,11 +3,12 @@
 // 사진, 가격, 위치, 면적 등 핵심 정보를 한눈에 확인할 수 있다
 
 import Link from 'next/link';
-import type { Property } from '@/types/property';
+import Image from 'next/image';
+import type { PropertyWithPrimaryImage } from '@/types/property';
 import { formatTransactionSummary, formatArea, getPropertyTypeLabel } from '@/lib/utils';
 
 interface PropertyCardProps {
-  property: Property;
+  property: PropertyWithPrimaryImage;
 }
 
 export default function PropertyCard({ property }: PropertyCardProps) {
@@ -19,13 +20,22 @@ export default function PropertyCard({ property }: PropertyCardProps) {
     >
       {/* 이미지 영역 */}
       <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-        {/* 더미 이미지 placeholder */}
-        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-          <svg className="w-12 h-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        </div>
+        {property.primaryImageUrl ? (
+          <Image
+            src={property.primaryImageUrl}
+            alt={property.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+            <svg className="w-12 h-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+        )}
 
         {/* 배지 (추천, 태그) */}
         <div className="absolute top-2 left-2 flex gap-1.5">

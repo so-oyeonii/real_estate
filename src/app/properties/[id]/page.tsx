@@ -3,6 +3,7 @@
 // 동적 메타데이터로 SEO 최적화
 
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getPropertyById } from '@/lib/properties';
 import {
@@ -85,16 +86,48 @@ export default async function PropertyDetailPage({ params }: PageProps) {
         {/* 왼쪽: 매물 정보 (2/3 너비) */}
         <div className="lg:col-span-2 space-y-8">
 
-          {/* 이미지 갤러리 (placeholder) */}
-          <div className="aspect-[16/9] bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center">
-            <div className="text-center text-slate-400">
-              <svg className="w-20 h-20 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-              <p className="text-sm">매물 사진</p>
+          {/* 이미지 갤러리 */}
+          {property.images.length > 0 ? (
+            <div className="space-y-2">
+              {/* 대표 이미지 (크게) */}
+              <div className="relative aspect-[16/9] bg-slate-100 rounded-2xl overflow-hidden">
+                <Image
+                  src={property.images[0].imageUrl}
+                  alt={property.images[0].altText || property.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 66vw"
+                  priority
+                />
+              </div>
+              {/* 서브 이미지 (작게, 가로 나열) */}
+              {property.images.length > 1 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {property.images.slice(1).map((img, i) => (
+                    <div key={img.id} className="relative aspect-[4/3] bg-slate-100 rounded-lg overflow-hidden">
+                      <Image
+                        src={img.imageUrl}
+                        alt={img.altText || `${property.title} 사진 ${i + 2}`}
+                        fill
+                        className="object-cover hover:opacity-90 transition-opacity"
+                        sizes="(max-width: 1024px) 25vw, 16vw"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div className="aspect-[16/9] bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center">
+              <div className="text-center text-slate-400">
+                <svg className="w-20 h-20 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <p className="text-sm">매물 사진</p>
+              </div>
+            </div>
+          )}
 
           {/* 가격 + 핵심 요약 */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">

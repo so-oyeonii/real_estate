@@ -7,7 +7,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import type { Property } from '@/types/property';
+import type { Property, PropertyImage } from '@/types/property';
+import ImageUploader from '@/components/forms/ImageUploader';
+import type { UploadedImage } from '@/components/forms/ImageUploader';
 import {
   PROPERTY_TYPE_OPTIONS,
   TRANSACTION_TYPE_OPTIONS,
@@ -19,11 +21,21 @@ import {
 interface PropertyFormProps {
   initialData?: Property;
   propertyId?: string;
+  initialImages?: PropertyImage[];
 }
 
-export default function PropertyForm({ initialData, propertyId }: PropertyFormProps) {
+export default function PropertyForm({ initialData, propertyId, initialImages }: PropertyFormProps) {
   const router = useRouter();
   const isEditMode = !!propertyId;
+
+  // 이미지 상태 (기존 이미지가 있으면 변환)
+  const [images, setImages] = useState<UploadedImage[]>(
+    (initialImages || []).map((img) => ({
+      id: img.id,
+      url: img.imageUrl,
+      isPrimary: img.isPrimary,
+    }))
+  );
 
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
@@ -119,14 +131,42 @@ export default function PropertyForm({ initialData, propertyId }: PropertyFormPr
         tags: formData.tags,
       };
 
+      let savedPropertyId = propertyId;
+
       if (isEditMode) {
         const { error: updateError } = await supabase
           .from('properties').update(dbData).eq('id', propertyId);
         if (updateError) throw updateError;
       } else {
-        const { error: insertError } = await supabase
-          .from('properties').insert(dbData);
+        const { data: insertData, error: insertError } = await supabase
+          .from('properties').insert(dbData).select('id').single();
         if (insertError) throw insertError;
+        savedPropertyId = insertData.id;
+      }
+
+      // 이미지 저장: 기존 이미지 삭제 후 새로 등록
+      if (savedPropertyId) {
+        // 기존 이미지 삭제
+        await supabase
+          .from('property_images')
+          .delete()
+          .eq('property_id', savedPropertyId);
+
+        // 새 이미지 등록
+        if (images.length > 0) {
+          const imageRows = images.map((img, index) => ({
+            property_id: savedPropertyId,
+            image_url: img.url,
+            display_order: index,
+            is_primary: img.isPrimary,
+            alt_text: `${formData.title} 사진 ${index + 1}`,
+          }));
+
+          const { error: imgError } = await supabase
+            .from('property_images')
+            .insert(imageRows);
+          if (imgError) console.error('이미지 저장 실패:', imgError);
+        }
       }
 
       router.push('/admin/properties');
@@ -146,6 +186,19 @@ export default function PropertyForm({ initialData, propertyId }: PropertyFormPr
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
 
       {/* 기본 정보 */}
+      {/* 매물 사진 */}
+      <Section title="매물 사진">
+        <ImageUploader
+          propertyId={propertyId}
+          images={images}
+          onChange={setImages}
+          maxImages={5}
+        />
+        <p className="mt-2 text-xs text-slate-400">
+          첫 번째 사진이 대표 사진으로 설정됩니다. 마우스를 올려 대표 사진을 변경하거나 삭제할 수 있습니다.
+        </p>
+      </Section>
+
       <Section title="기본 정보">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">

@@ -80,7 +80,12 @@ export interface PropertyImage {
   createdAt: string;
 }
 
-/** 매물 + 이미지 (목록에서 사용) */
+/** 매물 + 대표 이미지 URL (목록에서 사용) */
+export interface PropertyWithPrimaryImage extends Property {
+  primaryImageUrl: string | null;
+}
+
+/** 매물 + 이미지 전체 (상세에서 사용) */
 export interface PropertyWithImages extends Property {
   images: PropertyImage[];
 }

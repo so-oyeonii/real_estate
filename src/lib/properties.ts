@@ -4,14 +4,45 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { mapPropertyRowToProperty } from '@/lib/utils';
-import type { Property, PropertyWithImages, PropertyFilter, PropertyRow } from '@/types/property';
+import type { Property, PropertyWithPrimaryImage, PropertyWithImages, PropertyFilter, PropertyRow } from '@/types/property';
 import type { PaginatedResponse } from '@/types/common';
+
+/**
+ * 매물 목록에 대표 이미지 URL을 붙여서 반환하는 헬퍼
+ */
+async function attachPrimaryImages(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  properties: Property[]
+): Promise<PropertyWithPrimaryImage[]> {
+  if (properties.length === 0) return [];
+
+  const ids = properties.map((p) => p.id);
+  const { data: images } = await supabase
+    .from('property_images')
+    .select('property_id, image_url, is_primary')
+    .in('property_id', ids)
+    .order('display_order', { ascending: true });
+
+  // 매물 ID → 대표 이미지 URL 맵 생성
+  const imageMap = new Map<string, string>();
+  (images || []).forEach((img) => {
+    // 대표 이미지이거나, 아직 맵에 없으면(첫 번째 이미지) 설정
+    if (img.is_primary || !imageMap.has(img.property_id)) {
+      imageMap.set(img.property_id, img.image_url);
+    }
+  });
+
+  return properties.map((p) => ({
+    ...p,
+    primaryImageUrl: imageMap.get(p.id) || null,
+  }));
+}
 
 /**
  * 추천 매물 목록을 가져온다 (is_featured = true)
  * 메인 페이지에서 사용
  */
-export async function getFeaturedProperties(limit: number = 8): Promise<Property[]> {
+export async function getFeaturedProperties(limit: number = 8): Promise<PropertyWithPrimaryImage[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -27,7 +58,8 @@ export async function getFeaturedProperties(limit: number = 8): Promise<Property
     return [];
   }
 
-  return (data as PropertyRow[]).map(mapPropertyRowToProperty);
+  const properties = (data as PropertyRow[]).map(mapPropertyRowToProperty);
+  return attachPrimaryImages(supabase, properties);
 }
 
 /**
@@ -36,7 +68,7 @@ export async function getFeaturedProperties(limit: number = 8): Promise<Property
  */
 export async function getProperties(
   filters: PropertyFilter
-): Promise<PaginatedResponse<Property>> {
+): Promise<PaginatedResponse<PropertyWithPrimaryImage>> {
   const supabase = await createClient();
   const page = filters.page || 1;
   const limit = filters.limit || 12;
@@ -115,10 +147,11 @@ export async function getProperties(
   }
 
   const properties = (data as PropertyRow[]).map(mapPropertyRowToProperty);
+  const propertiesWithImages = await attachPrimaryImages(supabase, properties);
   const totalCount = count || 0;
 
   return {
-    data: properties,
+    data: propertiesWithImages,
     totalCount,
     page,
     limit,
